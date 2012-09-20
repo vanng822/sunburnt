@@ -8,7 +8,7 @@ version_number = re.search(version_number_re, open(version_file).read()).groups(
 
 distutils.core.setup(
     name='sunburnt',
-    version=version_number,
+    version=version_number+"-setn",
     description='Python interface to Solr',
     author='Toby White',
     author_email='toby@timetric.com',

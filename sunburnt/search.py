@@ -357,12 +357,11 @@ class LuceneQuery(object):
         self.boosts.append((kwargs, boost_score))
 
 
-
 class BaseSearch(object):
     """Base class for common search options management"""
     option_modules = ('query_obj', 'filter_obj', 'paginator',
                       'more_like_this', 'highlighter', 'faceter',
-                      'sorter', 'facet_querier', 'field_limiter',)
+                      'grouper', 'sorter', 'facet_querier', 'field_limiter',)
 
     result_constructor = dict
 
@@ -372,6 +371,7 @@ class BaseSearch(object):
         self.paginator = PaginateOptions(self.schema)
         self.highlighter = HighlightOptions(self.schema)
         self.faceter = FacetOptions(self.schema)
+        self.grouper = GroupOptions(self.schema)
         self.sorter = SortOptions(self.schema)
         self.field_limiter = FieldLimitOptions(self.schema)
         self.facet_querier = FacetQueryOptions(self.schema)
@@ -429,6 +429,16 @@ class BaseSearch(object):
     def facet_by(self, field, **kwargs):
         newself = self.clone()
         newself.faceter.update(field, **kwargs)
+        return newself
+        
+    def group_by(self, field, **kwargs):
+        newself = self.clone()
+        kwargs['field'] = field
+        
+        if not kwargs.has_key('ngroups'):
+            kwargs['ngroups'] = True
+            
+        newself.grouper.update(None, **kwargs)
         return newself
 
     def facet_query(self, *args, **kwargs):
@@ -752,6 +762,25 @@ class FacetOptions(Options):
         else:
             self.fields = copy.copy(original.fields)
 
+    def field_names_in_opts(self, opts, fields):
+        if fields:
+            opts["facet.field"] = sorted(fields)
+            
+class GroupOptions(Options):
+    option_name = "group"
+    opts = {"field":unicode,
+            "limit":int,
+            "main":bool,
+            "ngroups":bool
+           }
+           
+    def __init__(self, schema, original=None):
+        self.schema = schema
+        if original is None:
+            self.fields = collections.defaultdict(dict)
+        else:
+            self.fields = copy.copy(original.fields)
+        
     def field_names_in_opts(self, opts, fields):
         if fields:
             opts["facet.field"] = sorted(fields)

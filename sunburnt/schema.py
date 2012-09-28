@@ -136,6 +136,9 @@ class solr_currency(object):
     def __unicode__(self):
         return u"%s,%s" % (self.value, self.currency)
 
+    def __cmp__(self, other):
+        return self.value - other.value
+
 class SolrField(object):
     def __init__(self, name, indexed=None, stored=None, required=False, multiValued=False, dynamic=False, **kwargs):
         self.name = name
@@ -153,7 +156,7 @@ class SolrField(object):
             elif self.name.endswith("*"):
                 self.wildcard_at_start = False
             else:
-                raise SolrError("Dynamic fields must have * at start or end of name (field %s)" % 
+                raise SolrError("Dynamic fields must have * at start or end of name (field %s)" %
                         self.name)
 
     def match(self, name):
@@ -196,7 +199,7 @@ class SolrUnicodeField(SolrField):
         try:
             return unicode(value)
         except UnicodeError:
-            raise SolrError("%s could not be coerced to unicode (field %s)" % 
+            raise SolrError("%s could not be coerced to unicode (field %s)" %
                     (value, self.name))
 
 
@@ -211,7 +214,7 @@ class SolrBooleanField(SolrField):
             elif value.lower() == "false":
                 return False
             else:
-                raise ValueError("sorry, I only understand simple boolean strings (field %s, value %s)" % 
+                raise ValueError("sorry, I only understand simple boolean strings (field %s, value %s)" %
                         self.name, value)
         return bool(value)
 
@@ -221,7 +224,7 @@ class SolrBinaryField(SolrField):
         try:
             return str(value)
         except (TypeError, ValueError):
-            raise SolrError("Could not convert data to binary string (field %s)" % 
+            raise SolrError("Could not convert data to binary string (field %s)" %
                     self.name)
 
     def to_solr(self, value):
@@ -236,7 +239,7 @@ class SolrNumericalField(SolrField):
         try:
             v = self.base_type(value)
         except (OverflowError, TypeError, ValueError):
-            raise SolrError("%s is invalid value for %s (field %s)" % 
+            raise SolrError("%s is invalid value for %s (field %s)" %
                     (value, self.__class__, self.name))
         if v < self.min or v > self.max:
             raise SolrError("%s out of range for a %s (field %s)" %
@@ -248,13 +251,13 @@ class SolrCurrencyField(SolrField):
         return solr_currency(v)
 
     def from_user_data(self, value):
-        return solr_currency(*value.split(","))        
+        return solr_currency(*value.split(","))
 
     def to_solr(self, value):
         return unicode(value)
 
     def from_solr(self, value):
-        return solr_currency(*value.split(","))        
+        return solr_currency(*value.split(","))
 
 class SolrShortField(SolrNumericalField):
     base_type = int
@@ -557,7 +560,7 @@ class SolrSchema(object):
         elif field_class is None:
             raise SolrError("unexpected field found in result (field name: %s)" % name)
         return name, SolrFieldInstance.from_solr(field_class, doc.text or '').to_user_data()
-        
+
     def parse_group(self, group, value=None):
         if value is None:
             value = group.xpath("str[@name='groupValue']")[0].text
@@ -736,13 +739,13 @@ class SolrResult(object):
         self.schema = schema
         self.name = node.attrib['name']
         self.numFound = node.xpath("lst/int[@name='matches']")[0].text if self.grouped else int(node.attrib['numFound'])
-        
+
         if self.grouped:
             ngroups = node.xpath("lst/int[@name='ngroups']")
             if ngroups:
                 self.ngroups = int(ngroups[0].text)
-            self.groupField = node.xpath("lst")[0].attrib['name']    
-        
+            self.groupField = node.xpath("lst")[0].attrib['name']
+
         if 'start' in node.attrib:
             self.start = int(node.attrib['start'])
         else:
@@ -751,7 +754,7 @@ class SolrResult(object):
         self.docs = [schema.parse_result_doc(n) for n in node.xpath("doc")]
         self.groups = [schema.parse_group(n) for n in node.xpath("lst/arr[@name='groups']/lst")]
         return self
-        
+
     def __str__(self):
         return "%(numFound)s results found, starting at #%(start)s\n\n" % self.__dict__ + str(self.docs)
 

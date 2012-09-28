@@ -137,7 +137,13 @@ class solr_currency(object):
         return u"%s,%s" % (self.value, self.currency)
 
     def __cmp__(self, other):
-        return self.value - other.value
+        if self.value > other.value:
+            return 1
+        elif self.value == other.value:
+            return 0
+        else:
+            return -1
+
 
 class SolrField(object):
     def __init__(self, name, indexed=None, stored=None, required=False, multiValued=False, dynamic=False, **kwargs):

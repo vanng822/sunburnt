@@ -128,7 +128,7 @@ class solr_currency(object):
         else:
             self.currency = currency
 
-        self.value = value
+        self.value = float(value)
 
     def __repr__(self):
         return "solr_currency(%s)" % unicode(self)

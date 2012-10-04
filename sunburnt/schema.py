@@ -134,7 +134,7 @@ class solr_currency(object):
         return "solr_currency(%s)" % unicode(self)
 
     def __unicode__(self):
-        return u"%s,%s" % (self.value, self.currency)
+        return u"%.2f,%s" % (self.value, self.currency)
 
     def __cmp__(self, other):
         if self.value > other.value:

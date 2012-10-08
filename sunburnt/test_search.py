@@ -140,6 +140,13 @@ good_query_data = {
          [("fq", u"hello\\ world"), ("q", "*:*")]),
         ),
 
+    "local_param":(
+            (["q", "bbox"], {"sfield": "location", "pf": "0.05"},
+                [("q", u"{!bbox pf=0.05 sfield=location}")]),
+            (["fq", "bbox"], {"sfield": "location", "pf": "0.05"},
+                [("fq", u"{!bbox pf=0.05 sfield=location}"), ("q", "*:*")]),
+        ),
+
     "query":(
         ([], {"boolean_field":True},
          {"q":u"boolean_field:true"}),

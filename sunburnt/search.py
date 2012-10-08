@@ -4,6 +4,8 @@ import collections, copy, operator, re
 
 from .schema import SolrError, SolrBooleanField, SolrUnicodeField, WildcardFieldInstance
 
+import os
+
 
 class LuceneQuery(object):
     default_term_re = re.compile(r'^\w+$')
@@ -12,6 +14,7 @@ class LuceneQuery(object):
         self.normalized = False
         if original is None:
             self.option_flag = option_flag
+            self.local_params = None
             self.terms = collections.defaultdict(set)
             self.phrases = collections.defaultdict(set)
             self.ranges = set()
@@ -21,6 +24,7 @@ class LuceneQuery(object):
             self.boosts = []
         else:
             self.option_flag = original.option_flag
+            self.local_params = copy.copy(original.local_params)
             self.terms = copy.copy(original.terms)
             self.phrases = copy.copy(original.phrases)
             self.ranges = copy.copy(original.ranges)
@@ -79,6 +83,15 @@ class LuceneQuery(object):
             else:
                 s += [value.to_query() for value in value_set]
         return u' AND '.join(sorted(s))
+
+    def serialize_local_param(self, local_params):
+        if local_params is None:
+            return u''
+        (function, param_dict) = local_params
+        param_list = []
+        for key in sorted(param_dict.iterkeys()):
+            param_list += [u'%s=%s' % (key, param_dict[key])]
+        return u'{!%s %s}' % (function, ' '.join(param_list))
 
     range_query_templates = {
         "any": u"[* TO *]",
@@ -190,7 +203,8 @@ class LuceneQuery(object):
             newself, _ = newself.normalize()
             return newself.__unicode__(level=level)
         else:
-            u = [s for s in [self.serialize_term_queries(self.terms),
+            u = [s for s in [self.serialize_local_param(self.local_params),
+                             self.serialize_term_queries(self.terms),
                              self.serialize_term_queries(self.phrases),
                              self.serialize_range_queries()]
                  if s]
@@ -281,6 +295,9 @@ class LuceneQuery(object):
         for value in args:
             self.add_exact(None, value, terms_or_phrases)
         for k, v in kwargs.items():
+            if k == "local_param":
+                self.set_local_param(v)
+                continue
             try:
                 field_name, rel = k.split("__")
             except ValueError:
@@ -356,10 +373,12 @@ class LuceneQuery(object):
             value = field.instance_from_user_data(v)
         self.boosts.append((kwargs, boost_score))
 
+    def set_local_param(self, pair):
+        self.local_params = pair
 
 class BaseSearch(object):
     """Base class for common search options management"""
-    option_modules = ('query_obj', 'filter_obj', 'paginator',
+    option_modules = ('query_obj', 'filter_objs', 'paginator',
                       'more_like_this', 'highlighter', 'faceter',
                       'grouper', 'sorter', 'facet_querier', 'field_limiter',)
 
@@ -367,7 +386,7 @@ class BaseSearch(object):
 
     def _init_common_modules(self):
         self.query_obj = LuceneQuery(self.schema, u'q')
-        self.filter_obj = LuceneQuery(self.schema, u'fq')
+        self.filter_objs = [LuceneQuery(self.schema, u'fq')]
         self.paginator = PaginateOptions(self.schema)
         self.highlighter = HighlightOptions(self.schema)
         self.faceter = FacetOptions(self.schema)
@@ -411,9 +430,15 @@ class BaseSearch(object):
         newself.query_obj.add_boost(kwargs, boost_score)
         return newself
 
+    def new_filter(self, *args, **kwargs):
+        lq = LuceneQuery(self.schema, u'fq')
+        lq.add(args, kwargs)
+        self.filter_objs.append(lq)
+        return self
+
     def filter(self, *args, **kwargs):
         newself = self.clone()
-        newself.filter_obj.add(args, kwargs)
+        newself.filter_objs[0].add(args, kwargs)
         return newself
 
     def filter_by_term(self, *args, **kwargs):
@@ -473,8 +498,18 @@ class BaseSearch(object):
 
     def options(self):
         options = {}
+        os.system("echo 'options' >> /tmp/sunburnt.log")
         for option_module in self.option_modules:
-            options.update(getattr(self, option_module).options())
+            if option_module == "filter_objs":
+                option_module_list = []
+                for module in getattr(self, option_module):
+                    opts = module.options()
+                    if 'fq' in opts:
+                        option_module_list.append(opts['fq'])
+                if option_module_list:
+                    options['fq'] = option_module_list
+            else :
+                options.update(getattr(self, option_module).options())
         # Next line is for pre-2.6.5 python
         return dict((k.encode('utf8'), v) for k, v in options.items())
 
@@ -603,7 +638,10 @@ class SolrSearch(BaseSearch):
             self._init_common_modules()
         else:
             for opt in self.option_modules:
-                setattr(self, opt, getattr(original, opt).clone())
+                if isinstance(getattr(original, opt), list):
+                    setattr(self, opt, list(getattr(original, opt)))
+                else:
+                    setattr(self, opt, getattr(original, opt).clone())
             self.result_constructor = original.result_constructor
 
     def options(self):
@@ -645,7 +683,10 @@ class MltSolrSearch(BaseSearch):
             self.content = original.content
             self.url = original.url
             for opt in self.option_modules:
-                setattr(self, opt, getattr(original, opt).clone())
+                if isinstance(getattr(original, opt), list):
+                    setattr(self, opt, list(getattr(original, opt)))
+                else:
+                    setattr(self, opt, getattr(original, opt).clone())
 
     def query(self, *args, **kwargs):
         if self.content is not None or self.url is not None:
@@ -696,7 +737,9 @@ class Options(object):
         assert False, msg
 
     def update(self, fields=None, **kwargs):
+        os.system("echo 'in update' >> /tmp/sunburnt.log")
         if fields:
+            os.system("echo 'fields %s' >> /tmp/sunburnt.log" % fields)
             self.schema.check_fields(fields)
             if isinstance(fields, basestring):
                 fields = [fields]
@@ -706,6 +749,7 @@ class Options(object):
             fields = [None]
         checked_kwargs = self.check_opts(kwargs)
         for k, v in checked_kwargs.items():
+            os.system("echo 'k,v %s %s' >> /tmp/sunburnt.log" % (k,v))
             for field in fields:
                 self.fields[field][k] = v
 
@@ -960,7 +1004,8 @@ class SortOptions(Options):
             field = field[1:]
         else:
             order = "asc"
-        if field != 'score':
+        is_a_function = re.match('.*\)$', field)
+        if field != 'score' and not is_a_function:
             f = self.schema.match_field(field)
             if not f:
                 raise SolrError("No such field %s" % field)

@@ -10,6 +10,8 @@ import pytz
 from .schema import solr_date, SolrSchema, SolrError, SolrUpdate, SolrDelete
 from .search import LuceneQuery
 
+from nose.tools import assert_equal
+
 debug = False
 
 not_utc = pytz.timezone('Etc/GMT-3')
@@ -455,7 +457,7 @@ def test_currency_data_understood_ok():
     # Kroner. I like Norwegians!)
     user_data = "1.00,NOK"
     field_inst = s.field_from_user_data("currency", user_data)
-    assert unicode(field_inst.value) == u"1.00,NOK"
+    assert_equal(unicode(field_inst.value), u"1.00,NOK")
 
     user_data = "1.00"
     field_inst = s.field_from_user_data("currency", user_data)

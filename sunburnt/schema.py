@@ -569,7 +569,7 @@ class SolrSchema(object):
 
     def parse_group(self, group, value=None):
         if value is None:
-            value = group.xpath("str[@name='groupValue']")[0].text
+            value = group.xpath("*[@name='groupValue']")[0].text
         return value, [self.parse_result_doc(n) for n in group.xpath("result/doc")]
 
 

@@ -4,9 +4,6 @@ import collections, copy, operator, re
 
 from .schema import SolrError, SolrBooleanField, SolrUnicodeField, WildcardFieldInstance
 
-import os
-
-
 class LuceneQuery(object):
     default_term_re = re.compile(r'^\w+$')
     def __init__(self, schema, option_flag=None, original=None):
@@ -498,7 +495,6 @@ class BaseSearch(object):
 
     def options(self):
         options = {}
-        os.system("echo 'options' >> /tmp/sunburnt.log")
         for option_module in self.option_modules:
             if option_module == "filter_objs":
                 option_module_list = []
@@ -737,9 +733,7 @@ class Options(object):
         assert False, msg
 
     def update(self, fields=None, **kwargs):
-        os.system("echo 'in update' >> /tmp/sunburnt.log")
         if fields:
-            os.system("echo 'fields %s' >> /tmp/sunburnt.log" % fields)
             self.schema.check_fields(fields)
             if isinstance(fields, basestring):
                 fields = [fields]
@@ -749,7 +743,6 @@ class Options(object):
             fields = [None]
         checked_kwargs = self.check_opts(kwargs)
         for k, v in checked_kwargs.items():
-            os.system("echo 'k,v %s %s' >> /tmp/sunburnt.log" % (k,v))
             for field in fields:
                 self.fields[field][k] = v
 

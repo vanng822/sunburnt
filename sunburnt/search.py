@@ -808,7 +808,8 @@ class GroupOptions(Options):
     opts = {"field":unicode,
             "limit":int,
             "main":bool,
-            "ngroups":bool
+            "ngroups":bool,
+            "facet":bool
            }
            
     def __init__(self, schema, original=None):

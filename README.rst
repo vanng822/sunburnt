@@ -3,7 +3,6 @@ It also contains some patches:
 - The currency field by ikanobori, originally didn't properly handle sorting for currency range-queries.
 - The original branch from tow, improperly sent a float for the commitWithin parameter to add when Solr expected an int.
 
-<<<<<<< HEAD
 WIP:
 - Support for query filter functions such as "bbox".
 =======
@@ -49,5 +48,4 @@ Dependencies
 
 - Optional (only to run the tests)
 
-  * `nose <http://somethingaboutorange.com/mrl/projects/nose/>`_
->>>>>>> 939f4501f366ff8df08ff073a7cd17170bdd3b7f
+  * `nose <http://somethingaboutorange.com/mrl/projects/nose/>`
